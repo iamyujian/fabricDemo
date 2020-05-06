@@ -18,12 +18,8 @@ import Btn from "./Btn.vue";
 
 import { makeCircle, makeLine } from "@/components/line/line";
 import {
-  _drawMousePointer,
-  _moveLineEvent,
-  _moveCircleEvent,
   lineLength,
-  _dblClick,
-  lineMove
+  _redrawLine
 } from "./line/lineEven";
 export default {
   name: "Canvas",
@@ -34,12 +30,12 @@ export default {
     return {
       mode: "hand",
       canvas: null,
-      mousePoint: { x: 0, y: 0 },
-      startPoint: { x: 0, y: 0 },
+      mousePoint: { x: 0, y: 0 }, // 鼠标的坐标值
+      startPoint: { x: 0, y: 0 }, 
       endPoint: { x: 0, y: 0 },
-      mousePointerCircle: null,
-      previewLine: null, //预览线
-      starCircle: null, // 画线的预览点
+      mousePointerCircle: null, // 跟随鼠标的小圆点 
+      previewLine: null, // 预览线
+      previewCircle: null, // 画线的预览点
       lineArr: [], // 保存所有的线
       pointer: { startPoint: { x: 0, y: 0 }, endPoint: { x: 0, y: 0 } }, // 保存预览点
       clickNum: 0, // 判断点击次数
@@ -47,10 +43,6 @@ export default {
       temporaryLine: null, //双击的线
       clickLine: null,
       length: 0,
-      lines: null,
-      linePath: null,
-      offset: { x: 0, y: 0 },
-      lineMoved: null
     };
   },
   mounted() {
@@ -78,7 +70,7 @@ export default {
       if (e && e.keyCode == 27) {
         this.btnClick("Hand");
         this.mode = "Hand";
-        this.canvas.remove(this.mousePointerCircle, this.starCircle);
+        this.canvas.remove(this.mousePointerCircle, this.previewCircle);
       }
     };
   },
@@ -93,10 +85,11 @@ export default {
           divArr[i].className = "active";
         }
       }
+      // 切换到 Hand 页面
       if (this.mode === "Hand") {
         this.canvas.remove(
           this.mousePointerCircle,
-          this.starCircle,
+          this.previewCircle,
           this.previewLine
         );
       } else {
@@ -113,7 +106,7 @@ export default {
       this.mousePoint.x = option.pointer.x;
       this.mousePoint.y = option.pointer.y;
       if (this.mode === "Line") {
-        // 圆点跟随鼠标
+        // 创建圆点跟随鼠标
         this.canvas.remove(this.mousePointerCircle);
         this.mousePointerCircle = makeCircle({
           left: this.mousePoint.x,
@@ -122,9 +115,8 @@ export default {
           fill: "#fff"
         });
         this.canvas.add(this.mousePointerCircle);
-
+        // 创建一条预览线
         if (this.clickNum === 1) {
-          // 重绘线
           if (this.previewLine) {
             this.canvas.remove(this.previewLine);
             this.previewLine = makeLine({
@@ -138,7 +130,8 @@ export default {
     },
     // 物件移动事件
     objMoving(option) {
-      const target = option.target;
+      let target = option.target;
+      // 移动线的时候删除线两边的小圆点
       if (option.target.path) {
         if (this.circleObj) {
           this.canvas.remove(
@@ -148,92 +141,80 @@ export default {
           this.circleObj = null;
         }
       }
-
       // 移动圆点
+      const index = target.id - 1;
+      let line = this.lineArr[index];
+      let id = target.id;
       if (target.name) {
-        const index = target.id - 1;
-        let line = this.lineArr[index];
-
-        // let path = {
-        //   x1: tarLine.path[0][1] + offset.x,
-        //   y1: tarLine.path[0][2] + offset.y,
-        //   x2: tarLine.path[1][1] + offset.x,
-        //   y2: tarLine.path[1][2] + offset.y
-        // }
-        // this.canvas.remove(target)
-        // let line = makeLine({line:`M ${path.x1} ${path.y1} L ${path.x2} ${path.y2}`})
-        // line.id = id
-        // this.lineArr.splice(index,1,line)
-        // this.canvas.add(line)
-        // line.path[0][1] = target.left;
-        // line.path[0][2] = target.top;
-
-        this.canvas.renderAll();
-        // }
-        if (target.name === "end") {
-          line.path[1][1] = target.left;
-          line.path[1][2] = target.top;
-          this.canvas.renderAll();
+        if (target.name === "start") {
+          let path = {
+            x1: target.left,
+            y1: target.top,
+            x2: line.path[1][1],
+            y2: line.path[1][2]
+          };
+          let redrawLine = _redrawLine(line, path, this.canvas);
+          this.lineArr.splice(index, 1, redrawLine);
         }
+        if (target.name === "end") {
+          let path = {
+            x1: line.path[0][1],
+            y1: line.path[0][2],
+            x2: target.left,
+            y2: target.top
+          };
+          let redrawLine = _redrawLine(line, path, this.canvas);
+          this.lineArr.splice(index, 1, redrawLine);
+        }
+        this.length = lineLength(line);
       }
     },
+    // 物件移动后触发事件
     objMoved(option) {
       let target = option.target;
-      let id = target.id
-      let index = id - 1
-      if (target.name) {
-      }
+      let id = target.id;
+      let index = id - 1;
+      let line = target;
+
+      // 计算线移动的距离重绘线
       if (target.path) {
-        let tarLine = target
-        let id = target.id
-        let index = id - 1 
         let offset = {
           x: target.left - target.path[0][1],
           y: target.top - target.path[0][2]
         };
-        
         let path = {
-          x1: tarLine.path[0][1] + offset.x,
-          y1: tarLine.path[0][2] + offset.y,
-          x2: tarLine.path[1][1] + offset.x,
-          y2: tarLine.path[1][2] + offset.y
-        }
-        this.canvas.remove(target)
-        let line = makeLine({line:`M ${path.x1} ${path.y1} L ${path.x2} ${path.y2}`})
-        line.id = id
-        this.lineArr.splice(index,1,line)
-        this.canvas.add(line)
+          x1: line.path[0][1] + offset.x,
+          y1: line.path[0][2] + offset.y,
+          x2: line.path[1][1] + offset.x,
+          y2: line.path[1][2] + offset.y
+        };
+        let redrawLine = _redrawLine(line, path, this.canvas);
+        this.lineArr.splice(index, 1, redrawLine);
       }
     },
-    // 双击事件
+    // 双击物件事件
     mouseDblclick(option) {
       this.lineArr.forEach(line => {
-        if (this.canvas.getActiveObject()) {
-          if (option.target.id === line.id) {
-            let id = line.id;
-            // 判断是否已经创建了圆点
-            console.log(line.path[0][1]);
-            
-            if (!this.circleObj) {
-              let startPoint = makeCircle({
-                left: line.path[0][1],
-                top: line.path[0][2]
-              });
-
-              let lastPoint = makeCircle({
-                left: line.path[1][1],
-                top: line.path[1][2]
-              });
-
-              startPoint.name = "start";
-              startPoint.id = id;
-              lastPoint.name = "end";
-              lastPoint.id = id;
-              this.canvas.add(startPoint, lastPoint);
-              this.circleObj = {};
-              this.circleObj.startCircle = startPoint;
-              this.circleObj.endCircle = lastPoint;
-            }
+        if (this.canvas.getActiveObject() && option.target.id === line.id) {
+          let id = line.id;
+          // 双击线生成小圆点
+          if (!this.circleObj) {
+            let startPoint = makeCircle({
+              left: line.path[0][1],
+              top: line.path[0][2]
+            });
+            let lastPoint = makeCircle({
+              left: line.path[1][1],
+              top: line.path[1][2]
+            });
+            startPoint.name = "start";
+            startPoint.id = id;
+            lastPoint.name = "end";
+            lastPoint.id = id;
+            this.canvas.add(startPoint, lastPoint);
+            this.circleObj = {};
+            this.circleObj.startCircle = startPoint;
+            this.circleObj.endCircle = lastPoint;
           }
         }
       });
@@ -256,9 +237,9 @@ export default {
         }
       }
 
+      // 点击线得到线的长度
       if (this.mode === "Hand") {
         this.canvas.skipTargetFind = false;
-
         if (this.canvas.getActiveObject()) {
           this.clickLine = this.canvas.getActiveObject();
           // 得到线的长度
@@ -268,22 +249,23 @@ export default {
         }
       }
 
+      // 生成线
       if (this.mode === "Line") {
         let lineId = this.lineArr.length;
         // 画板元素不能别选中
         this.canvas.skipTargetFind = true;
-        // 创建第一个点
+        // 创建第一个点，使用 clickNum 记录鼠标点击的次数
         if (this.clickNum === 0) {
           this.startPoint.x = this.mousePoint.x;
           this.startPoint.y = this.mousePoint.y;
           this.pointer.startPoint.x = this.startPoint.x;
           this.pointer.startPoint.y = this.startPoint.y;
 
-          this.starCircle = makeCircle({
+          this.previewCircle = makeCircle({
             left: this.startPoint.x,
             top: this.startPoint.y
           });
-          this.canvas.add(this.starCircle);
+          this.canvas.add(this.previewCircle);
 
           this.previewLine = makeLine({
             line: `M ${this.startPoint.x} ${this.startPoint.y} L ${this.mousePoint.x} ${this.mousePoint.y}`,
@@ -301,23 +283,11 @@ export default {
           this.pointer.endPoint.x = this.endPoint.x;
           this.pointer.endPoint.y = this.endPoint.y;
 
-          this.canvas.remove(this.starCircle, this.previewLine);
+          this.canvas.remove(this.previewCircle, this.previewLine);
           this.previewLine = null;
 
           let line = makeLine({
             line: `M ${this.pointer.startPoint.x} ${this.pointer.startPoint.y} L ${this.pointer.endPoint.x} ${this.pointer.endPoint.y}`
-            // moving: function(option) {
-            //   // if (this.circleObj) {
-            //   //   this.canvas.remove(
-            //   //     this.circleObj.startCircle,
-            //   //     this.circleObj.endCircle
-            //   //   );
-            //   // }
-            //   // console.log("path:" + option.target.path);
-            // }.bind(this),
-            // moved: function(option) {
-
-            // }.bind(this)
           });
           line.id = lineId + 1;
           this.canvas.add(line);

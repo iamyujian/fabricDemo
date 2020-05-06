@@ -38,7 +38,5 @@ export function makeLine({line, stroke = 'green',moving,moved}) {
   });
   // 设置可以直接改 Path 中坐标的值
   l.objectCaching = false;
-  console.log(l);
-  
   return l;
 }
