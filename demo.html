@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/fabric.js/2.4.6/fabric.min.js"></script>
+
+</head>
+
+<body>
+  <canvas id="canvas" width="350" height="200"></canvas>
+
+  <script>
+    const c = new fabric.Canvas('canvas',{
+      backgroundColor: '#ccc'
+    })
+    let path = new fabric.Path('M 0 0 L 200 100',{
+      stroke: 'green',
+      strokeWidth: 2
+    })
+
+    c.add(path)
+    path.set({
+      // path: `M 10 10 L 50 50`,
+      // stroke: 'green',
+      // strokeWidth: 2
+    })
+    path.path[0][1] = 100
+    path.path[0][2] = 100
+    path.path[1][1] = 10
+    path.path[1][2] = 1867
+    console.log(path.path);
+    
+  </script>
+
+</body>
+
+</html>
