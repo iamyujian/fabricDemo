@@ -1,7 +1,7 @@
 <template>
   <div id="btn">
     <div class="active" @click="hand">Hand</div>
-    <div @click="bezierCurve">Bezier Curve</div>
+    <div @click="bezierCurve">BezierCurve</div>
     <div @click="line">Line</div>
     <div @click="detect">Detect</div>
     <div @click="detele">Detele</div>
@@ -17,7 +17,7 @@ export default {
       this.$emit('btnClick','Hand')
     },
     bezierCurve() {
-      this.$emit('btnClick','Bezier Curve')
+      this.$emit('btnClick','BezierCurve')
     },
     line() {
       this.$emit('btnClick','Line')

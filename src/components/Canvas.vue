@@ -43,7 +43,8 @@ export default {
       bzCircleArr: [],
       bzStartPoint: null,
       bzEndCircle: null,
-      bzLineArr: []
+      bzLineArr: [],
+      bzClickNum: 0
     };
   },
   mounted() {
@@ -96,6 +97,14 @@ export default {
       } else {
         this.clickLine = null;
       }
+      // if (condition) {
+        
+      // }
+      if (this.mode !== 'BezierCurve') {
+        this.canvas.remove(this.bzPreviewLine)
+        this.bzClickNum = 0
+      }
+
       // 删除线段
       if (this.mode === "Detele") {
         this.canvas.skipTargetFind = false;
@@ -126,19 +135,21 @@ export default {
             });
             this.canvas.add(this.previewLine);
           }
-          // 创建贝兹曲线预览线
+        }
+        // 创建贝兹曲线预览线
+        if (this.bzClickNum === 3) {
+          console.log(3);
+          let { x, y } = this.bzStartPoint;
           if (this.bzPreviewLine) {
-            let { x, y } = this.bzStartPoint;
             this.canvas.remove(this.bzPreviewLine);
-            this.bzPreviewLine = makeLine({
-              line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
+          }
+          this.bzPreviewLine = makeLine({
+            line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
               ${this.mousePoint.y} ${this.mousePoint.x}
               ${this.mousePoint.y}`,
-              stroke: "gray"
-            });
-            this.canvas.add(this.bzPreviewLine);
-            this.clickNum = 2
-          }
+            stroke: "gray"
+          });
+          this.canvas.add(this.bzPreviewLine);
         }
       }
     },
@@ -186,24 +197,26 @@ export default {
     // 物件移动后触发事件
     objMoved(option) {
       let target = option.target;
-      let id = target.id;
-      let index = id - 1;
-      let line = target;
+      if (this.mode === "Line") {
+        let id = target.id;
+        let index = id - 1;
+        let line = target;
 
-      // 计算线移动的距离重绘线
-      if (target.path) {
-        let offset = {
-          x: target.left - target.path[0][1],
-          y: target.top - target.path[0][2]
-        };
-        let path = {
-          x1: line.path[0][1] + offset.x,
-          y1: line.path[0][2] + offset.y,
-          x2: line.path[1][1] + offset.x,
-          y2: line.path[1][2] + offset.y
-        };
-        let redrawLine = _redrawLine(line, path, this.canvas, "blue");
-        this.lineArr.splice(index, 1, redrawLine);
+        // 计算线移动的距离重绘线
+        if (target.path) {
+          let offset = {
+            x: target.left - target.path[0][1],
+            y: target.top - target.path[0][2]
+          };
+          let path = {
+            x1: line.path[0][1] + offset.x,
+            y1: line.path[0][2] + offset.y,
+            x2: line.path[1][1] + offset.x,
+            y2: line.path[1][2] + offset.y
+          };
+          let redrawLine = _redrawLine(line, path, this.canvas, "blue");
+          this.lineArr.splice(index, 1, redrawLine);
+        }
       }
     },
     // 双击物件事件
@@ -236,27 +249,7 @@ export default {
 
     // 鼠标点击事件
     downClick(option) {
-      // 判断点击的是否是当前双击的对象，如果不是就移除线两边的圆点
       let target = option.target;
-      if (this.circleObj) {
-        if (
-          (target && this.circleObj.startCircle.id !== target.id) ||
-          target === null
-        ) {
-          this.canvas.remove(
-            this.circleObj.startCircle,
-            this.circleObj.endCircle
-          );
-          this.circleObj = null;
-        }
-      }
-      this.lineArr.forEach(line => {
-        line.set({ stroke: "green" });
-        if (target && target.id && target.id === line.id) {
-          line.set({ stroke: "blue" });
-        }
-      });
-
       // 点击线得到线的长度
       if (this.mode === "Hand") {
         this.canvas.skipTargetFind = false;
@@ -267,6 +260,25 @@ export default {
         } else {
           this.clickLine = null;
         }
+        // 判断点击的是否是当前双击的对象，如果不是就移除线两边的圆点
+        if (this.circleObj) {
+          if (
+            (target && this.circleObj.startCircle.id !== target.id) ||
+            target === null
+          ) {
+            this.canvas.remove(
+              this.circleObj.startCircle,
+              this.circleObj.endCircle
+            );
+            this.circleObj = null;
+          }
+        }
+        this.lineArr.forEach(line => {
+          line.set({ stroke: "green" });
+          if (target && target.id && target.id === line.id) {
+            line.set({ stroke: "blue" });
+          }
+        });
       }
 
       // 生成线
@@ -292,8 +304,8 @@ export default {
             stroke: "gray"
           });
           this.canvas.add(this.previewLine);
-          this.clickNum++;
         }
+          this.clickNum++;
 
         // 创建第二个点
         if (this.clickNum === 2) {
@@ -316,30 +328,36 @@ export default {
       }
 
       // 生成贝兹曲线
-      if (this.mode === "Bezier Curve") {
+      if (this.mode === "BezierCurve") {
+        this.bzClickNum = 0;
         let { x, y } = this.mousePoint;
-        if (this.clickNum === 0) {
+        if (this.bzClickNum === 0) {
+          console.log(0);
           this.bzStartPoint = { x: x, y: y };
           let bzStartCircle = makeCircle({ left: x, top: y });
-          this.bzPreviewLine = makeLine({
-            line: `M ${x} ${y} L ${x} ${y}`
-          });
-          bzStartCircle.id = this.bzCircleArr.length;
+          bzStartCircle.bzId = this.bzCircleArr.length + 1;
+          let index = this.bzCircleArr.length;
           this.bzCircleArr.push(bzStartCircle);
-          this.canvas.add(bzStartCircle, this.bzPreviewLine);
-          this.clickNum = 1;
-        }
-        if (this.clickNum === 2) {
-          this.clickNum = 1
-          let startPoint = this.bzStartPoint
-          let endPoint = this.bzStartPoint = { x: x, y: y };
-          let bzEndCircle = makeCircle({ left: x, top: y });
-          this.canvas.remove(this.bzPreviewLine)
-          let line = mekeLine({line: `M ${startPoint.x} ${startPoint.y} C ${startPoint.x} ${startPoint.y} ${endPoint.x} ${endPoint.y} ${endPoint.x} ${endPoint.y}`})
-          line.id = this.bzLineArr.length
-          this.bzLineArr.push(line)
-          this.bzCircleArr.push(bzEndCircle);
-          this.canvas.add(line,bzEndCircle)
+          this.canvas.add(bzStartCircle);
+          // 判断预览线存在与否
+          if (this.bzPreviewLine) {
+            // 拿到上一个圆点的坐标作为线的开始点
+            let { x, y } = {
+              x: this.bzCircleArr[index - 1].left,
+              y: this.bzCircleArr[index - 1].top
+            };
+            this.canvas.remove(this.bzPreviewLine);
+            let bzLine = makeLine({
+              line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
+              ${this.mousePoint.y} ${this.mousePoint.x}
+              ${this.mousePoint.y}`
+            });
+            bzLine.bzId = this.bzLineArr.length + 1;
+            this.canvas.add(bzLine);
+            this.bzLineArr.push(bzLine);
+            this.bzPreviewLine = null;
+          }
+          this.bzClickNum = 3;
         }
       }
     }
