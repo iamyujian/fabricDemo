@@ -2,9 +2,6 @@ import {
   makeCircle,
   makeLine
 } from './line';
-import {
-  preCircle
-} from '../tools/preGraphics';
 
 // 计算线的长度
 export function lineLength(line) {
@@ -20,25 +17,11 @@ export function lineLength(line) {
   }
 }
 
-// 移动 line 完成触发事件
-export function lineMove(option) {
-  // 移动直线的时候，坐标是不会变的，需要手动修改直线的坐标
-  const target = option.target;
-  const offset = {
-    x: target.left - option.target.path[0][1],
-    y: target.top - option.target.path[0][2]
-  };
-  option.target.path[0][1] += offset.x;
-  option.target.path[0][2] += offset.y;
-  option.target.path[1][1] += offset.x;
-  option.target.path[1][2] += offset.y;
-}
-
 // 重画线
-export function _redrawLine(line, path, canvas) {
+export function _redrawLine(line, path, canvas,stroke = 'green') {
   let id = line.id
   canvas.remove(line)
-  line = makeLine({ line: `M ${path.x1} ${path.y1} L ${path.x2} ${path.y2}` })
+  line = makeLine({ line: `M ${path.x1} ${path.y1} L ${path.x2} ${path.y2}`,stroke:stroke })
   line.id = id
   canvas.add(line)
   return line

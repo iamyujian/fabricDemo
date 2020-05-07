@@ -17,10 +17,7 @@
 import Btn from "./Btn.vue";
 
 import { makeCircle, makeLine } from "@/components/line/line";
-import {
-  lineLength,
-  _redrawLine
-} from "./line/lineEven";
+import { lineLength, _redrawLine } from "./line/lineEven";
 export default {
   name: "Canvas",
   components: {
@@ -31,9 +28,9 @@ export default {
       mode: "hand",
       canvas: null,
       mousePoint: { x: 0, y: 0 }, // 鼠标的坐标值
-      startPoint: { x: 0, y: 0 }, 
+      startPoint: { x: 0, y: 0 },
       endPoint: { x: 0, y: 0 },
-      mousePointerCircle: null, // 跟随鼠标的小圆点 
+      mousePointerCircle: null, // 跟随鼠标的小圆点
       previewLine: null, // 预览线
       previewCircle: null, // 画线的预览点
       lineArr: [], // 保存所有的线
@@ -43,6 +40,10 @@ export default {
       temporaryLine: null, //双击的线
       clickLine: null,
       length: 0,
+      bzCircleArr: [],
+      bzStartPoint: null,
+      bzEndCircle: null,
+      bzLineArr: []
     };
   },
   mounted() {
@@ -105,7 +106,7 @@ export default {
     mouseMove(option) {
       this.mousePoint.x = option.pointer.x;
       this.mousePoint.y = option.pointer.y;
-      if (this.mode === "Line") {
+      if (this.mode !== "Hand") {
         // 创建圆点跟随鼠标
         this.canvas.remove(this.mousePointerCircle);
         this.mousePointerCircle = makeCircle({
@@ -124,6 +125,19 @@ export default {
               stroke: "gray"
             });
             this.canvas.add(this.previewLine);
+          }
+          // 创建贝兹曲线预览线
+          if (this.bzPreviewLine) {
+            let { x, y } = this.bzStartPoint;
+            this.canvas.remove(this.bzPreviewLine);
+            this.bzPreviewLine = makeLine({
+              line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
+              ${this.mousePoint.y} ${this.mousePoint.x}
+              ${this.mousePoint.y}`,
+              stroke: "gray"
+            });
+            this.canvas.add(this.bzPreviewLine);
+            this.clickNum = 2
           }
         }
       }
@@ -153,7 +167,7 @@ export default {
             x2: line.path[1][1],
             y2: line.path[1][2]
           };
-          let redrawLine = _redrawLine(line, path, this.canvas);
+          let redrawLine = _redrawLine(line, path, this.canvas, "blue");
           this.lineArr.splice(index, 1, redrawLine);
         }
         if (target.name === "end") {
@@ -163,7 +177,7 @@ export default {
             x2: target.left,
             y2: target.top
           };
-          let redrawLine = _redrawLine(line, path, this.canvas);
+          let redrawLine = _redrawLine(line, path, this.canvas, "blue");
           this.lineArr.splice(index, 1, redrawLine);
         }
         this.length = lineLength(line);
@@ -188,7 +202,7 @@ export default {
           x2: line.path[1][1] + offset.x,
           y2: line.path[1][2] + offset.y
         };
-        let redrawLine = _redrawLine(line, path, this.canvas);
+        let redrawLine = _redrawLine(line, path, this.canvas, "blue");
         this.lineArr.splice(index, 1, redrawLine);
       }
     },
@@ -236,6 +250,12 @@ export default {
           this.circleObj = null;
         }
       }
+      this.lineArr.forEach(line => {
+        line.set({ stroke: "green" });
+        if (target && target.id && target.id === line.id) {
+          line.set({ stroke: "blue" });
+        }
+      });
 
       // 点击线得到线的长度
       if (this.mode === "Hand") {
@@ -272,8 +292,8 @@ export default {
             stroke: "gray"
           });
           this.canvas.add(this.previewLine);
+          this.clickNum++;
         }
-        this.clickNum++;
 
         // 创建第二个点
         if (this.clickNum === 2) {
@@ -292,6 +312,34 @@ export default {
           line.id = lineId + 1;
           this.canvas.add(line);
           this.lineArr.push(line);
+        }
+      }
+
+      // 生成贝兹曲线
+      if (this.mode === "Bezier Curve") {
+        let { x, y } = this.mousePoint;
+        if (this.clickNum === 0) {
+          this.bzStartPoint = { x: x, y: y };
+          let bzStartCircle = makeCircle({ left: x, top: y });
+          this.bzPreviewLine = makeLine({
+            line: `M ${x} ${y} L ${x} ${y}`
+          });
+          bzStartCircle.id = this.bzCircleArr.length;
+          this.bzCircleArr.push(bzStartCircle);
+          this.canvas.add(bzStartCircle, this.bzPreviewLine);
+          this.clickNum = 1;
+        }
+        if (this.clickNum === 2) {
+          this.clickNum = 1
+          let startPoint = this.bzStartPoint
+          let endPoint = this.bzStartPoint = { x: x, y: y };
+          let bzEndCircle = makeCircle({ left: x, top: y });
+          this.canvas.remove(this.bzPreviewLine)
+          let line = mekeLine({line: `M ${startPoint.x} ${startPoint.y} C ${startPoint.x} ${startPoint.y} ${endPoint.x} ${endPoint.y} ${endPoint.x} ${endPoint.y}`})
+          line.id = this.bzLineArr.length
+          this.bzLineArr.push(line)
+          this.bzCircleArr.push(bzEndCircle);
+          this.canvas.add(line,bzEndCircle)
         }
       }
     }

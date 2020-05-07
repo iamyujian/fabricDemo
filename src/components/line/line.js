@@ -16,10 +16,6 @@ export function makeCircle({ left,
     stroke: stroke,
     radius: radius
   });
-  c.on({
-    'moving': moving,
-    'moved':moved
-  });
   c.hasControls = c.hasBorders = false;
   return c;
 }
@@ -32,10 +28,10 @@ export function makeLine({line, stroke = 'green',moving,moved}) {
   });
   l.hasControls  = false;
   // l.selectable = true
-  l.on({
-    'moving': moving,
-    'moved':moved
-  });
+  // l.on({
+  //   'moving': moving,
+  //   'moved':moved
+  // });
   // 设置可以直接改 Path 中坐标的值
   l.objectCaching = false;
   return l;
