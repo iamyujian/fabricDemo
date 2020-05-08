@@ -22,7 +22,7 @@ export function makeCircle({ left,
 
 export function makeLine({line, stroke = 'green',moving,moved}) {
   const l = new fabric.Path(line, {
-    fill: "red",
+    fill: "",
     stroke: stroke,
     strokeWidth: 1
   });

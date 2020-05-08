@@ -43,8 +43,13 @@ export default {
       bzCircleArr: [],
       bzStartPoint: null,
       bzEndCircle: null,
+      bzPreviewLine: null,
       bzLineArr: [],
-      bzClickNum: 0
+      bzClickNum: 0,
+      controlPoint: null, // 控制点
+      // preControlPoint: null,
+      mouseUpPoint: null, // mouseup时的坐标
+      iscontrol: false
     };
   },
   mounted() {
@@ -64,7 +69,8 @@ export default {
       "mouse:down": this.downClick,
       "mouse:dblclick": this.mouseDblclick,
       "object:moving": this.objMoving,
-      "object:moved": this.objMoved
+      "object:moved": this.objMoved,
+      "mouse:up": this.mouseUp
     });
 
     // 按 esc 取消正在画的线段并回到 Hand
@@ -97,12 +103,9 @@ export default {
       } else {
         this.clickLine = null;
       }
-      // if (condition) {
-        
-      // }
-      if (this.mode !== 'BezierCurve') {
-        this.canvas.remove(this.bzPreviewLine)
-        this.bzClickNum = 0
+      if (this.mode !== "BezierCurve") {
+        this.canvas.remove(this.bzPreviewLine);
+        this.bzClickNum = 0;
       }
 
       // 删除线段
@@ -138,18 +141,64 @@ export default {
         }
         // 创建贝兹曲线预览线
         if (this.bzClickNum === 3) {
-          console.log(3);
+          // 上一个圆的点
+          let index = this.bzCircleArr.length;
+          // 当前圆的点
           let { x, y } = this.bzStartPoint;
+          // 生成预览线
           if (this.bzPreviewLine) {
             this.canvas.remove(this.bzPreviewLine);
           }
-          this.bzPreviewLine = makeLine({
-            line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
+
+          // up 触发后再给预览线设置控制点
+          if (this.iscontrol) {
+            let index = this.bzCircleArr.length;
+            let endCir = this.bzCircleArr[index - 1];
+            this.bzPreviewLine = makeLine({
+              line: `M ${x} ${y} C ${x} ${y} ${endCir.ctp1.x}
+              ${endCir.ctp1.y} ${this.mousePoint.x}
+              ${this.mousePoint.y}`,
+              stroke: "gray"
+            });
+          } else {
+            this.bzPreviewLine = makeLine({
+              line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
               ${this.mousePoint.y} ${this.mousePoint.x}
               ${this.mousePoint.y}`,
-            stroke: "gray"
-          });
+              stroke: "gray"
+            });
+          }
           this.canvas.add(this.bzPreviewLine);
+
+          // 判断有没有可以控制的线
+          if (this.bzLineArr.length) {
+            // 得到上一个圆点的位置坐标
+            let { x1, y1 } = {
+              x1: this.bzCircleArr[index - 2].left,
+              y1: this.bzCircleArr[index - 2].top
+            };
+            let bzLine = this.bzLineArr[this.bzLineArr.length - 1];
+
+            // 如果不是从mouseup生成的线就进入（鼠标只触发down不触发up的时候触发）
+            if (bzLine.name !== "mouseUpbzLine") {
+              // 计算控制点
+              this.controlPoint = {
+                x: x + x - this.mousePoint.x,
+                y: y + y - this.mousePoint.y
+              };
+
+              this.canvas.remove(bzLine);
+              bzLine = makeLine({
+                line: `M ${x1} ${y1} C ${x1} ${y1} ${this.controlPoint.x}
+              ${this.controlPoint.y} ${x}
+              ${y}`,
+                stroke: "blue"
+              });
+              this.canvas.add(bzLine);
+              this.bzLineArr.splice(this.bzLineArr.length - 1, 1, bzLine);
+              bzLine.name = "movingbzLine";
+            }
+          }
         }
       }
     },
@@ -305,7 +354,7 @@ export default {
           });
           this.canvas.add(this.previewLine);
         }
-          this.clickNum++;
+        this.clickNum++;
 
         // 创建第二个点
         if (this.clickNum === 2) {
@@ -331,12 +380,13 @@ export default {
       if (this.mode === "BezierCurve") {
         this.bzClickNum = 0;
         let { x, y } = this.mousePoint;
+        // 每次点击的时候创建一个圆
         if (this.bzClickNum === 0) {
-          console.log(0);
           this.bzStartPoint = { x: x, y: y };
           let bzStartCircle = makeCircle({ left: x, top: y });
-          bzStartCircle.bzId = this.bzCircleArr.length + 1;
+          bzStartCircle.bzId = this.bzCircleArr.length;
           let index = this.bzCircleArr.length;
+
           this.bzCircleArr.push(bzStartCircle);
           this.canvas.add(bzStartCircle);
           // 判断预览线存在与否
@@ -346,20 +396,110 @@ export default {
               x: this.bzCircleArr[index - 1].left,
               y: this.bzCircleArr[index - 1].top
             };
-            this.canvas.remove(this.bzPreviewLine);
             let bzLine = makeLine({
               line: `M ${x} ${y} C ${x} ${y} ${this.mousePoint.x}
               ${this.mousePoint.y} ${this.mousePoint.x}
-              ${this.mousePoint.y}`
+              ${this.mousePoint.y}`,
+              stroke: "blue"
             });
-            bzLine.bzId = this.bzLineArr.length + 1;
             this.canvas.add(bzLine);
             this.bzLineArr.push(bzLine);
-            this.bzPreviewLine = null;
+            bzLine.bzId = this.bzLineArr.length;
           }
+          // 等于 3 执行 moving 中事件
           this.bzClickNum = 3;
         }
       }
+    },
+    mouseUp() {
+      // 第一次点击不进入
+      if (this.bzPreviewLine) {
+        // 记录up时当前鼠标的坐标
+        this.mouseUpPoint = this.mousePoint;
+        // 当前圆的点
+        let { x, y } = this.bzStartPoint;
+        // 上一个圆的点
+        let index = this.bzCircleArr.length;
+        let endCir = this.bzCircleArr[index - 1];
+        if (index - 2 >= 0) {
+          // 上一个圆点的位置坐标
+          let preCircle = this.bzCircleArr[index - 2];
+          let { x1, y1 } = {
+            x1: preCircle.left,
+            y1: preCircle.top
+          };
+          // 数组中最后一条线
+          let bzLine = this.bzLineArr[this.bzLineArr.length - 1];
+          // 画直线的时候 controlPoint 为空，重新设置control的值
+          if (!this.controlPoint) {
+            this.controlPoint = {
+              x: this.mouseUpPoint.x,
+              y: this.mouseUpPoint.y
+            };
+          }
+          // 将控制点的坐标保存到当前圆里
+          endCir.ctp1 = {
+            x: this.mousePoint.x,
+            y: this.mousePoint.y
+          };
+          endCir.ctp2 = {
+            x: this.controlPoint.x,
+            y: this.controlPoint.y
+          };
+          // 创建最终的线段
+          this.canvas.remove(bzLine);
+          bzLine = makeLine({
+            line: `M ${x1} ${y1} C ${x1} ${y1} ${this.controlPoint.x}
+              ${this.controlPoint.y} ${x}
+              ${y}`,
+            stroke: "green"
+          });
+          bzLine.name = "mouseUpbzLine";
+          // 将控制点保存在当前圆的坐标点对象里
+          // this.bzStartPoint.ctp1 = {x: x1, y: y1}
+          // this.bzStartPoint.ctp2 = {x: this.controlPoint.x, y: this.controlPoint.y}
+          // console.log(this.bzStartPoint);
+
+          this.canvas.add(bzLine);
+          this.bzLineArr.splice(this.bzLineArr.length - 1, 1, bzLine);
+          // 清空控制点，不然画直线的时候会被影响
+          this.controlPoint = null;
+          this.iscontrol = true;
+        }
+      }
+
+      // let { x, y } = this.mousePoint;
+      // let index = this.bzCircleArr.length;
+      // // 判断预览线存在与否
+      // if (this.bzPreviewLine) {
+      //   // 拿到上一个圆点的坐标作为线的开始点
+      //   let { x, y } = {
+      //     x: this.bzCircleArr[index - 1].left,
+      //     y: this.bzCircleArr[index - 1].top
+      //   };
+      //   // 当前圆
+      //   let { x1, y1 } = {
+      //     x: this.bzCircleArr[index].left,
+      //     y: this.bzCircleArr[index].top
+      //   };
+      //   // 控制点
+      //   let controlPoint = {
+      //     x: x + x - this.mousePoint.x,
+      //     y: y + y - this.mousePoint.y
+      //   };
+      //   this.canvas.remove(this.bzPreviewLine);
+      //   let bzLine = makeLine({
+      //     line: `M ${x} ${y} C ${x} ${y} ${controlPoint.x}
+      //         ${controlPoint.y} ${this.mousePoint.x}
+      //         ${this.mousePoint.y}`
+      //   });
+      //   console.log(bzLine);
+
+      //   bzLine.bzId = this.bzLineArr.length + 1;
+      //   this.canvas.add(bzLine);
+      //   this.bzLineArr.push(bzLine);
+      //   this.bzPreviewLine = null;
+      // }
     }
   }
 };
