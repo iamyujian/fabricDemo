@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+    
+    .main {
+			padding: 16px;
+    }
+
+    .main__botton {
+      outline: none;
+			border: 1px solid grey;
+			border-radius: 3.2px;
+			padding: 16px;
+			cursor: pointer;
+			margin: 0 8px;
+    }
+
+    .main__botton:active, .active {
+			color: blue;
+			border-color: blue;
+		}
+
+    .main__canvas {
+      margin: 16px;
+      display: flex;
+      justify-content: center;
+			align-items: center;
+			flex-direction: column;
+    }
+    .main__info {
+      display: inline-block;
+      margin-left: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="main">
+      <button v-for="modeText in modeList" :class="modeText.type === mode ? 'active' : null" class="main__botton" @click="modeClick(modeText.type)">{{ modeText.font }}</button>
+      <div v-if='activeObjId' class="main__info">Detected Object ID: {{ activeObjId ? activeObjId : 'null' }}{{ activeObjData.length ? `, Length: ${activeObjData.length}` : null }}</div>
+      <div class="main__canvas">
+        <canvas id="canvas"></canvas>
+        <div class="main__mouse-position">X: {{ mouse.position.x.toFixed(1) }}, Y: {{ mouse.position.y.toFixed(1) }}</div>
+      </div>
+    </div>
+  </div>
+</body>
+<script src="./vue.js"></script>
+<script src="https://unpkg.com/fabric@4.0.0-beta.8/dist/fabric.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.js"></script>
+<script src="./even.js"></script>
+<script src="./draw.js"></script>
+<script src='./main.js'></script>
+</html>
