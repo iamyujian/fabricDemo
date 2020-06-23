@@ -138,7 +138,7 @@ function _drawLinePoint({ canvas, coordinate, id, movingPoint, movedPoint, movin
         // 如果是第二个点
         if (indexPoint % 2 === 1) {
           // 画点,将打包的data写进圆点对象里
-          _drawBezierPoint({ canvas, x: path.points[indexPoint - 1], y: point, data: { ...data, indexPoint: indexPoint - 1 }, moving: movedPoint, moved: movedPoint });
+          _drawBezierPoint({ canvas, x: path.points[indexPoint - 1], y: point, data: { ...data, indexPoint: indexPoint - 1 }, moving: movingPoint, moved: movedPoint });
         }
       });
     };

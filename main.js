@@ -183,7 +183,7 @@ var app = new Vue({
           break;
         case 'bezierCurve':
           this.recordCoordinates();
-          _drawPath({ canvas: this.canvas, coordinate: this.currentData.coordinate, stroke: 'green', id: this.currentData.id, name: 'prebz', mousedown: this.mousedownObj, mousedbl: this.mousedblClick, movedObj: this.movedObj, movedObj: this.movedObj });
+          _drawPath({ canvas: this.canvas, coordinate: this.currentData.coordinate, stroke: 'green', id: this.currentData.id, name: 'prebz', mousedown: this.mousedownObj, mousedbl: this.mousedblClick, movingObj: this.movingObj, movedObj: this.movedObj });
           break;
       
         default:
@@ -328,7 +328,7 @@ var app = new Vue({
       }
       // 根据计算后的坐标重新生成线
       _removeObj(this.canvas, `path-${targetData.id}`);
-      _drawPath({ canvas: this.canvas, coordinate: targetData.coordinate, id: targetData.id, name: `path-${targetData.id}`, stroke: 'red', mousedown: this.mousedownObj, mousedbl: this.mousedblClick, movedObj: this.movedObj, movedObj: this.movedObj });
+      _drawPath({ canvas: this.canvas, coordinate: targetData.coordinate, id: targetData.id, name: `path-${targetData.id}`, stroke: 'red', mousedown: this.mousedownObj, mousedbl: this.mousedblClick, movingObj: this.movingObj, movedObj: this.movedObj });
       // 移动时重新计算长度
       if (targetData.mode === 'line') {
         targetData.length = this.lineLength(targetData.coordinate);
