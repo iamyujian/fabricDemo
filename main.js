@@ -115,7 +115,8 @@ var app = new Vue({
         backgroundColor: '#eeeeec',
         // 画板显示选中
         selection: false,
-        // hoverCursor: 'pointer'
+        // 鼠标样式
+        hoverCursor: 'default'
       });
       this.canvas.on({
         'mouse:move': this.mousemove,
@@ -143,26 +144,25 @@ var app = new Vue({
       this.mouse.position.x = e.absolutePointer.x;
       this.mouse.position.y = e.absolutePointer.y;
       switch (this.mode) {
-        case 'line':
+        case 'line': {
           // 跟随鼠标圆点
           _followMouseDots(this.canvas, this.mouse.position.x, this.mouse.position.y);
           // 绘制预览线
           _previewPath({canvas: this.canvas, coordinate: this.currentData.coordinate, bzCurve: this.bzCurve, x: this.mouse.position.x, y: this.mouse.position.y });
           break;
-        case 'bezierCurve':
-          let { x, y } = this.mouse.position;
-          if (this.currentData.coordinate.length > 1) {
-            // 记录最开始的点
-            const firstPoint = this.currentData.coordinate[0];
-            const point = { x: firstPoint.points[0], y: firstPoint.points[1] };
-            
-          }
+        }
+        case 'bezierCurve': {
           // 跟随鼠标圆点
           _followMouseDots(this.canvas, this.mouse.position.x, this.mouse.position.y);
           this.updateBZData();
           // 绘制预览线
           _previewPath({canvas: this.canvas, coordinate: this.currentData.coordinate, bzCurve: this.bzCurve, x: this.mouse.position.x, y: this.mouse.position.y });
           break;
+        }
+        case 'detect': {
+          this.mouseDistanceObj();
+          _followMouseDots(this.canvas, this.mouse.position.x, this.mouse.position.y);
+        }
         default:
           break;
       }
@@ -172,10 +172,7 @@ var app = new Vue({
       this.mouse_down = true;
       switch (this.mode) {
         case 'hand':
-          if (!e.target) {this.activeObjId = null;
-            // _removeObj(this.canvas, 'bzPoint');
-            // _removeObj(this.canvas, 'line');
-          }
+          if (!e.target) this.activeObjId = null;
           break;
         case 'line':
           this.recordCoordinates();
@@ -257,12 +254,13 @@ var app = new Vue({
         // 重画贝兹曲线前先把临时线移除
         _removeObj(this.canvas, 'prebz');
         _drawPath({ canvas: this.canvas, coordinate: data.coordinate, id: data.id, name: `path-${data.id}`, mousedown: this.mousedownObj, mousedbl: this.mousedblClick, movedObj: this.movedObj, movingObj: this.movingObj });
+        data.detectPoints = this.createDetectPoints(data.coordinate);
       });
       this.restart = false;
     },
     // 拖动时更新贝兹曲线的控制点
     updateBZData() {
-      // 判断时候开启拖动
+      // 判断点击的时候开启拖动
       if (!this.mouse_drag) return;
       if (this.currentData.coordinate.length < 2) return;
       // 拿到当前数据中的最后一个点的坐标
@@ -341,55 +339,74 @@ var app = new Vue({
     movedPoint(e) {
       const { data } = e.target;
       const targetData = this.findDataById(data.id);
-      // targetData.buffer = this.calAllBezierPoints(targetData.coordinate);
+      // 添加侦测点
+      targetData.detectPoints = this.createDetectPoints(targetData.coordinate);
     },
-    // calAllBezierPoints(coordinate, intergral = 400) {
-    //   const bzAllPoints = [];
-    //   coordinate.forEach((path, index) => {
-    //     if (index === 0) return;
-    //     if (path.type === 'Z') return;
-    //     // 得到每个终点的坐标
-    //     const prevPath = coordinate[index - 1];
-    //     const c1 = { x: null, y: null };
-    //     const c2 = { x: null, y: null };
-    //     // 得到每个开始点的坐标
-    //     const start = { x: null, y: null };
-    //     if (prevPath.type === 'M' || prevPath.type === 'L') {
-    //       start.x = prevPath.points[0];
-    //       start.y = prevPath.points[1];
-    //     }
-    //     if (prevPath.type === 'C') {
-    //       start.x = prevPath.points[4];
-    //       start.y = prevPath.points[5];
-    //     }
-    //     // 得到每个终点的坐标
-    //     const end = { x: null, y: null };
-    //     if (path.type === 'L') {
-    //       end.x = path.points[0];
-    //       end.y = path.points[1];
-    //     }
-    //     if (path.type === 'C') {
-    //       c1.x = path.points[0];
-    //       c1.y = path.points[1];
-    //       c2.x = path.points[2];
-    //       c2.y = path.points[3];
-    //       end.x = path.points[4];
-    //       end.y = path.points[5];
-    //     }
-    //     const step = 1 / indergral;
-    //     console.log(step);
+    // 创建线上的侦测点
+    createDetectPoints(coordinate, percent = 100) {
+      // 声明侦测点数组
+      const detectPoints = [];
+      coordinate.forEach((path, index) => {
+        if (index === 0) return;
+        // 得到每个终点的坐标数据
+        const prevPath = coordinate[index - 1];
         
-    //     const bezier = { x: null, y: null };
-    //     let t = 0;
-    //     for (let t = 0; t < 1 - step; t+= step) {
-    //       if (path.type === 'C') {
-    //         bezier.x = start.x * (1- t) + end.x * t;
-    //         bezier.y = start.y * (1- t) + end.y * t;
-    //       }
-          
-    //     }
-    //   });
-    // },
+        // 声明控制点
+        const c1 = { x: null, y: null };
+        const c2 = { x: null, y: null };
+        // 声明开始点
+        const start = { x: null, y: null };
+        // 开始点坐标赋值给start
+        if (prevPath.type === 'M' || prevPath.type === 'L') {
+          start.x = prevPath.points[0];
+          start.y = prevPath.points[1];
+        }
+        // 每段贝兹曲线的开始点坐标
+        if (prevPath.type === 'C') {
+          start.x = prevPath.points[4];
+          start.y = prevPath.points[5];
+        }
+        // 得到终点的坐标
+        const end = { x: null, y: null };
+        if (path.type === 'L') {
+          end.x = path.points[0];
+          end.y = path.points[1];
+        }
+        // 每段贝兹曲线的终点位置坐标位置
+        if (path.type === 'C') {
+          c1.x = path.points[0];
+          c1.y = path.points[1];
+          c2.x = path.points[2];
+          c2.y = path.points[3];
+          end.x = path.points[4];
+          end.y = path.points[5];
+        }
+        // 每个点的间隔距离
+        const part = 1 / percent;
+        // 声明侦测点
+        const bzPoint = { x: null, y: null };
+        // 声明贝兹曲线运动轨迹百分比 t
+        let t = 0;
+        // 循环 part 次，每次增加 part
+        for (let t = 0; t < 1 - part; t += part) {
+          // 计算直线坐标的值
+          if (path.type === 'L') {
+            const coor = _oneBezier(t, start, end);
+            bzPoint.x = start.x * (1 - t) + end.x * t;
+            bzPoint.y = start.y * (1 - t) + end.y * t;
+          }
+          if (path.type === 'C') {
+            // 计算贝兹曲线坐标的值
+            const coor = _threeBezier(t, start, c1, c2, end);
+            bzPoint.x = coor.x;
+            bzPoint.y = coor.y;
+          }
+          // 将贝兹曲线上的点拷贝到数组中
+          detectPoints.push(JSON.parse(JSON.stringify(bzPoint)));
+        }
+      });
+      return detectPoints;
+    },
     // 对象移动事件
     movingObj(e) {
       if (!e.target) return;
@@ -415,6 +432,8 @@ var app = new Vue({
       });
       // 判断当前对象的圆点是否显示中，如果在显示就重画
       if (targetData.showPoint) _drawLinePoint({ canvas: this.canvas, coordinate: targetData.coordinate, id: targetData.id, movingPoint: this.movingPoint, movedPoint: this.movedPoint, movingControlPoint: this.movingControlPoint });
+      // 添加侦测点
+      targetData.detectPoints = this.createDetectPoints(targetData.coordinate);
     },
 
     // 计算线的长度
@@ -429,28 +448,36 @@ var app = new Vue({
         x: endPoint.points[0],
         y: endPoint.points[1]
       }
+      // 返回两点之间的距离
       return Math.sqrt(Math.pow(start.x - end.x, 2) + Math.pow(start.y - end.y, 2));
     },
 
     // 贝兹曲线控制点 moving
-    movingControlPoint(e) {      
+    movingControlPoint(e) {
       const { data, top, left } = e.target;
       const targetData = this.findDataById(data.id);
-      // 计算偏移量
+      // 计算偏移量 
+      // data.indexPath 的值，如果是开始点值为2，如果是终点值为0
       const offsert = {
         x: left - targetData.coordinate[data.indexPath].points[data.indexPoint],
         y: top - targetData.coordinate[data.indexPath].points[data.indexPoint + 1]
       };
+      // 拿到当前移动的控制点的坐标
       const targetPath = targetData.coordinate[data.indexPath];
+      // 修改坐标点的值
       targetPath.points[data.indexPoint] += offsert.x;
       targetPath.points[data.indexPoint + 1] += offsert.y;
+      // 如果移动的是开始点
       if (data.indexPoint === 0) {
-        const prevPath = targetData.coordinate[data.indexPath - 1];
+        // 拿到当前线控制点的坐标点
+        const prevPath = targetData.coordinate[data.indexPath - 1];   
+        // 如果是 C 类型的坐标点  
         if (prevPath && prevPath.type === 'C') {
           prevPath.points[2] = 2 * prevPath.points[4] - targetPath.points[data.indexPoint];
           prevPath.points[3] = 2 * prevPath.points[5] - targetPath.points[data.indexPoint + 1];
         };
       }
+      // 如果移动的是终点
       if (data.indexPoint === 2) {
         const nextPath = targetData.coordinate[data.indexPath + 1]
         if (nextPath && nextPath.type === 'C') {
@@ -461,7 +488,31 @@ var app = new Vue({
       _drawPath({ canvas: this.canvas, coordinate: targetData.coordinate, id: targetData.id, name: `path-${targetData.id}`, mousedown: this.mousedownObj, mousedbl: this.mousedblClick, movedObj: this.movedObj, movingObj: this.movingObj });
       _drawLinePoint({ canvas: this.canvas, coordinate: targetData.coordinate, id: targetData.id, movingPoint: this.movingPoint, movedPoint: this.movedPoint, movingControlPoint: this.movingControlPoint });
     },
-
+    // 鼠标与对象的距离
+    mouseDistanceObj() {
+      // 最小距离
+      let minDistance = 5;
+      let detected = { point: null, id: null };
+      this.allDatas.forEach(data => {
+        // 遍历线上侦测点的坐标
+        data.detectPoints.forEach(dp=> {
+          // 计算两点之间的距离
+          const dist = Math.sqrt(Math.pow(dp.x - this.mouse.position.x, 2) + Math.pow(dp.y - this.mouse.position.y, 2));
+          
+          // 如果距离小于最小距离,将点和id保存起来
+          if (dist < minDistance) {
+            detected.point = dp;
+            detected.id = data.id;
+          }
+        });
+      });
+      if (detected.id) {
+        this.activeObjId = detected.id;
+        // 让鼠标点等于侦测点
+        this.mouse.position.x = detected.point.x;
+        this.mouse.position.y = detected.point.y;
+      } else this.activeObjId = null;
+    },
 
     // 根据ID删除物件
     deleteObj(id) {

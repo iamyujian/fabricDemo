@@ -1,5 +1,5 @@
 /**
- * 预览线
+ * @desc 预览线
  * @param {Object} canvas 画板
  * @param {Array} coordinate M坐标
  * @param {Object} bzCurve C坐标
@@ -25,7 +25,7 @@ function _previewPath({canvas, coordinate, bzCurve, x, y }) {
 }
 
 /**
- * 绘制跟随鼠标小圆点
+ * @desc 绘制跟随鼠标小圆点
  * @param {Object} canvas 画板
  * @param {Number} x 鼠标坐标
  * @param {Number} y 鼠标坐标
@@ -47,11 +47,12 @@ function _followMouseDots(canvas, x, y) {
     hasControls: false
   });
   canvas.add(dots);
-  if (x <= 0 || y <= 0) _removeObj(canvas, 'dots');
+  // 鼠标移动超过canvas
+  if (x <= 3 || y <= 3) _removeObj(canvas, 'dots');
 }
 
 /**
- *  使用path画线
+ * @desc 使用path画线
  * @param {Object} canvas 画板
  * @param {Array} coordinate 坐标组
  * @param {String} id id
@@ -88,7 +89,7 @@ function _drawPath({ canvas, coordinate, id, name = 'bezierCurve', stroke = 'gre
 }
 
 /**
- * 绘制 circle
+ * @desc 绘制 circle 鼠标点击生成的第一个基础圆点
  * @param {Object} canvas 画板
  * @param {Number} x left值
  * @param {Number} y top值
@@ -98,7 +99,6 @@ function _drawPath({ canvas, coordinate, id, name = 'bezierCurve', stroke = 'gre
  * @param {String} name name
  * @param {Boolean} add 是否添加
  */
-// 鼠标点击生成的第一个基础圆点
 function _drawPoint({ canvas, x, y, stroke = 'red', fill = 'white', radius = 4, name = 'bzPoint', add = true }) {
   const point = new fabric.Circle({
     name,
@@ -116,7 +116,19 @@ function _drawPoint({ canvas, x, y, stroke = 'red', fill = 'white', radius = 4, 
   if (add) canvas.add(point);
   return point;
 }
-// 绘制 circle 点
+
+/**
+ * @desc 绘制 circle 点
+ * @param {Object} canvas 画板
+ * @param {Number} x left 值
+ * @param {Number} y top 值
+ * @param {String} stroke 画笔颜色
+ * @param {String} fill 填充颜色
+ * @param {Number} radius 半径
+ * @param {Object} data 保存的对象的数据
+ * @param {function} moving 
+ * @param {function} moved 
+ */
 function _drawBezierPoint({ canvas, x, y, stroke, fill, radius, data, moving, moved }) {
   const bezierPoint = _drawPoint({ canvas, x, y, stroke, fill, radius, add: false });
   bezierPoint.data = data;
@@ -125,7 +137,15 @@ function _drawBezierPoint({ canvas, x, y, stroke, fill, radius, data, moving, mo
   canvas.add(bezierPoint);
 }
 
-// 绘制线上的点
+/**
+ * @desc 绘制线上的点
+ * @param {Object} canvas 画板
+ * @param {Array} coordinate 坐标组
+ * @param {String} id 对象ID
+ * @param {function} movingPoint moving 事件
+ * @param {function} movedPoint moved事件
+ * @param {function} movingControlPoint 控制点 moving 事件
+ */
 function _drawLinePoint({ canvas, coordinate, id, movingPoint, movedPoint, movingControlPoint }) {
   _removeObj(canvas, 'bzPoint');
   _removeObj(canvas, 'line');
@@ -198,7 +218,14 @@ function _drawLinePoint({ canvas, coordinate, id, movingPoint, movedPoint, movin
   });
 }
 
-// 绘制 bezier curve上的 line
+/**
+ * @desc 绘制 bezier curve上的 line
+ * @param {Object} canvas 画板
+ * @param {Object} p1 开始点
+ * @param {Object} p2 终点
+ * @param {String} name name
+ * @param {String} stroke 画笔颜色
+ */
 function drawLine({ canvas, p1, p2, name = 'line', stroke = '#40a9ff' }) {
   const line = new fabric.Line([p1.x, p1.y, p2.x, p2.y], {
     name,
@@ -211,7 +238,7 @@ function drawLine({ canvas, p1, p2, name = 'line', stroke = '#40a9ff' }) {
 }
 
 /**
- * 根据name删除画板内的对象
+ * @desc 根据name删除画板内的对象
  * @param {Object} canvas 画板
  * @param {String} name 对象name属性
  */
